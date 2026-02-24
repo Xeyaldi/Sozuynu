@@ -14,7 +14,7 @@ OWNER_URL = os.getenv("OWNER_URL")
 bot = telebot.TeleBot(TOKEN)
 DATA_FILE = "words_data.json"
 
-# --- 🆕 MENYU KOMANDALARI (Məhz bu hissə menyunu çıxarır - SİLİNMƏYİB) ---
+# --- 🆕 MENYU KOMANDALARI ---
 bot.set_my_commands([
     types.BotCommand("start", "Əsas menyu"),
     types.BotCommand("oyun", "Şəxsidə oyuna başla"),
@@ -52,16 +52,23 @@ def shuffle_word(word):
     shuffled = "".join(word_list).upper()
     return " ".join(list(shuffled))
 
-# --- 🚀 START KOMANDASI (Qrupda da işləməsi üçün if-i götürdük - SİLİNMƏYİB) ---
+# --- 🚀 START KOMANDASI ---
 @bot.message_handler(commands=['start'])
 def start(message):
     markup = types.InlineKeyboardMarkup(row_width=1)
+    
+    # Yeni əlavə edilən "Qrupa Əlavə Et" butonu
+    bot_info = bot.get_me()
+    add_to_group_url = f"https://t.me/{bot_info.username}?startgroup=true"
+    
+    btn_add = types.InlineKeyboardButton("➕ Məni Qrupa Əlavə Et", url=add_to_group_url)
     btn_info = types.InlineKeyboardButton("ℹ️ Kömək və Qaydalar", callback_data="game_info")
     btn_chan = types.InlineKeyboardButton("📢 Kanal", url=CHANNEL_URL)
     btn_supp = types.InlineKeyboardButton("🆘 Qrup", url=SUPPORT_URL)
     btn_own = types.InlineKeyboardButton("👨‍💻 Sahib", url=OWNER_URL)
     
-    markup.add(btn_info, btn_chan, btn_supp, btn_own)
+    # Butonları ardıcıllıqla düzürük
+    markup.add(btn_add, btn_info, btn_chan, btn_supp, btn_own)
     
     text = (
         f"👋 **Salam, {message.from_user.first_name}!**\n\n"
