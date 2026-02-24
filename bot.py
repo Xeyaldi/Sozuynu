@@ -20,7 +20,6 @@ def load_data():
             return json.load(f)
     return {"easy": ["alma"], "medium": ["kitabxana"], "hard": ["azerbaycan"]}
 
-# BURA TOXUNULMADI
 def save_data(data):
     with open(DATA_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
@@ -41,7 +40,8 @@ def get_random_prompt():
 def shuffle_word(word):
     word_list = list(word)
     random.shuffle(word_list)
-    return "".join(word_list).upper()
+    shuffled = "".join(word_list).upper()
+    return " ".join(list(shuffled))
 
 # --- 🚀 START KOMANDASI ---
 @bot.message_handler(commands=['start'])
@@ -50,8 +50,7 @@ def start(message):
         return
 
     markup = types.InlineKeyboardMarkup(row_width=1)
-    # "Şəxside Oyna" düyməsi sənin istəyinlə silindi, Məlumat (Kömək) əlavə edildi
-    btn_info = types.InlineKeyboardButton("ℹ️ Kömək / Məlumat", callback_data="game_info")
+    btn_info = types.InlineKeyboardButton("ℹ️ Kömək və Qaydalar", callback_data="game_info")
     btn_chan = types.InlineKeyboardButton("📢 Kanal", url=CHANNEL_URL)
     btn_supp = types.InlineKeyboardButton("🆘 Qrup", url=SUPPORT_URL)
     btn_own = types.InlineKeyboardButton("👨‍💻 Sahib", url=OWNER_URL)
@@ -67,7 +66,7 @@ def start(message):
 
 # --- 🕹 ŞƏXSİDƏ KOMANDALAR ---
 @bot.message_handler(commands=['oyun'])
-def private_game(message):
+def start_private(message):
     if message.chat.type == "private":
         markup = types.InlineKeyboardMarkup(row_width=1)
         markup.add(
@@ -75,15 +74,15 @@ def private_game(message):
             types.InlineKeyboardButton("🟡 Orta", callback_data="level_medium"),
             types.InlineKeyboardButton("🔴 Çətin", callback_data="level_hard")
         )
-        bot.send_message(message.chat.id, "🎯 Səviyyəni seçin, oyun başlasın:", reply_markup=markup)
+        bot.send_message(message.chat.id, "🎯 **Zəhmət olmasa oyunun səviyyəsini seçin:**", reply_markup=markup, parse_mode="Markdown")
 
 @bot.message_handler(commands=['durdur'])
-def private_stop(message):
+def stop_private(message):
     if message.chat.type == "private" and message.chat.id in user_current_word:
         del user_current_word[message.chat.id]
         bot.reply_to(message, "🛑 Oyun dayandırıldı.")
 
-# --- 🕹 OYUNA BAŞLA (Qrup) ---
+# --- 🕹 QRUPDA OYUNA BAŞLA ---
 @bot.message_handler(commands=['oyunabasla'])
 def start_game_group(message):
     if message.chat.type == "private":
@@ -101,26 +100,26 @@ def start_game_group(message):
         types.InlineKeyboardButton("🟡 Orta", callback_data="level_medium"),
         types.InlineKeyboardButton("🔴 Çətin", callback_data="level_hard")
     )
-    # Sənin istədiyin cümlə ilə dəyişdirildi
-    bot.send_message(message.chat.id, "🎮 **Zəhmət olmasa oyunun səviyyəsini seçin:**", reply_markup=markup, parse_mode="Markdown")
+    
+    bot.reply_to(message, f"👤 **{message.from_user.first_name}** tərəfindən oyun başladıldı.\n\n🎮 **Zəhmət olmasa oyunun səviyyəsini seçin:**", reply_markup=markup, parse_mode="Markdown")
 
 # --- 🛑 OYUNU BİTİR ---
 @bot.message_handler(commands=['oyunubitir'])
 def stop_game(message):
     if message.chat.id not in user_current_word:
-        bot.reply_to(message, "🤔 Onsuz da aktiv bir oyun yoxdur.")
+        bot.reply_to(message, "🤔 Aktiv oyun yoxdur.")
         return
 
     user_status = bot.get_chat_member(message.chat.id, message.from_user.id).status
     if user_status not in ['administrator', 'creator'] and message.from_user.id != OWNER_ID:
-        bot.reply_to(message, "⚠️ Oyunu yalnız qrup adminləri dayandıra bilər!")
+        bot.reply_to(message, "⚠️ Bu komanda adminlər üçündür!")
         return
 
     correct = user_current_word[message.chat.id]["word"]
     del user_current_word[message.chat.id]
-    bot.send_message(message.chat.id, f"🛑 **Oyun dayandırıldı!**\n\nGizli sözümüz: **{correct.upper()}** idi.")
+    bot.send_message(message.chat.id, f"🛑 **Oyun dayandırıldı!**\n\nGizli söz: **{correct.upper()}** idi.")
 
-# --- ➕ TOPLU SÖZ ƏLAVƏ ETMƏ ---
+# --- ➕ SÖZ ƏLAVƏ ETMƏ ---
 @bot.message_handler(commands=['elaveasan', 'elaveorta', 'elavecetin'])
 def add_words_bulk(message):
     if message.from_user.id != OWNER_ID:
@@ -144,15 +143,21 @@ def add_words_bulk(message):
 @bot.callback_query_handler(func=lambda call: True)
 def handle_query(call):
     if call.data == "game_info":
-        info_txt = "ℹ️ **Kömək:**\n- Şəxside: /oyun və /durdur\n- Qrupda: /oyunabasla və /oyunubitir"
-        bot.send_message(call.message.chat.id, info_txt, parse_mode="Markdown")
+        info_msg = (
+            "📖 **OYUN QAYDALARI**\n\n"
+            "• Botun qarışıq verdiyi hərfləri birləşdirib sözü tapın.\n"
+            "• Şəxsidə: `/oyun` və `/durdur` komandaları.\n"
+            "• Qrupda: `/oyunabasla` və `/oyunubitir` komandaları.\n"
+            "• Sözü tapan kimi yeni söz gəlir!"
+        )
+        bot.send_message(call.message.chat.id, info_msg, parse_mode="Markdown")
+        bot.answer_callback_query(call.id)
         return
 
     if call.data.startswith("level_"):
         level = call.data.split("_")[1]
         word = random.choice(words_db[level])
         shuffled = shuffle_word(word)
-        # Səviyyəni yadda saxlayırıq ki, oyun davam edə bilsin
         user_current_word[call.message.chat.id] = {"word": word.lower(), "level": level}
         
         bot.edit_message_text(f"{get_random_prompt()}\n\n🧩 **HƏRFLƏR:** `{shuffled}`", 
@@ -160,7 +165,7 @@ def handle_query(call):
                               message_id=call.message.message_id, 
                               parse_mode="Markdown")
 
-# --- 📝 CAVAB YOXLAMA VƏ AVTOMATİK DAVAM ---
+# --- 📝 CAVAB YOXLAMA VƏ TƏK MESAJDA DAVAM ---
 @bot.message_handler(func=lambda m: m.chat.id in user_current_word)
 def check_answer(message):
     game_data = user_current_word[message.chat.id]
@@ -168,17 +173,19 @@ def check_answer(message):
     level = game_data["level"]
 
     if message.text.strip().lower() == correct_answer:
-        responses = [
-            f"🎉 **Halaldır!** Düzgün tapdınız: **{correct_answer.upper()}**",
-            f"⚡️ **Müthiş sürət!** Sözümüz **{correct_answer.upper()}** idi.",
-            f"🏆 **Qalib gəldin!** Sən əsl söz ustasısan."
-        ]
-        bot.reply_to(message, random.choice(responses), parse_mode="Markdown")
-        
-        # OYUNU DAVAM ETDİRMƏK ÜÇÜN YENİ SÖZ
+        # Növbəti sözü indi seçirik ki, tək mesajda göndərək
         new_word = random.choice(words_db[level])
         user_current_word[message.chat.id] = {"word": new_word.lower(), "level": level}
         shuffled = shuffle_word(new_word)
-        bot.send_message(message.chat.id, f"{get_random_prompt()}\n\n🧩 **HƏRFLƏR:** `{shuffled}`", parse_mode="Markdown")
+        
+        # Təbrik və yeni sual tək mesajda
+        response_text = (
+            f"🎉 **Halaldır!** Düzgün tapdınız: **{correct_answer.upper()}**\n\n"
+            f"______________________________\n\n"
+            f"{get_random_prompt()}\n\n"
+            f"🧩 **HƏRFLƏR:** `{shuffled}`"
+        )
+        # Tapan adama REPLY edir və tək mesaj göndərir
+        bot.reply_to(message, response_text, parse_mode="Markdown")
 
 bot.infinity_polling()
