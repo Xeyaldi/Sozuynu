@@ -14,6 +14,15 @@ OWNER_URL = os.getenv("OWNER_URL")
 bot = telebot.TeleBot(TOKEN)
 DATA_FILE = "words_data.json"
 
+# --- 🆕 MENYU KOMANDALARI (Məhz bu hissə menyunu çıxarır - SİLİNMƏYİB) ---
+bot.set_my_commands([
+    types.BotCommand("start", "Əsas menyu"),
+    types.BotCommand("oyun", "Şəxsidə oyuna başla"),
+    types.BotCommand("durdur", "Şəxsidə oyunu dayandır"),
+    types.BotCommand("oyunabasla", "Qrupda oyuna başla (Admin)"),
+    types.BotCommand("oyunubitir", "Qrupda oyunu bitir (Admin)")
+])
+
 def load_data():
     if os.path.exists(DATA_FILE):
         with open(DATA_FILE, "r", encoding="utf-8") as f:
@@ -43,12 +52,9 @@ def shuffle_word(word):
     shuffled = "".join(word_list).upper()
     return " ".join(list(shuffled))
 
-# --- 🚀 START KOMANDASI ---
+# --- 🚀 START KOMANDASI (Qrupda da işləməsi üçün if-i götürdük - SİLİNMƏYİB) ---
 @bot.message_handler(commands=['start'])
 def start(message):
-    if message.chat.type != "private":
-        return
-
     markup = types.InlineKeyboardMarkup(row_width=1)
     btn_info = types.InlineKeyboardButton("ℹ️ Kömək və Qaydalar", callback_data="game_info")
     btn_chan = types.InlineKeyboardButton("📢 Kanal", url=CHANNEL_URL)
@@ -173,19 +179,16 @@ def check_answer(message):
     level = game_data["level"]
 
     if message.text.strip().lower() == correct_answer:
-        # Növbəti sözü indi seçirik ki, tək mesajda göndərək
         new_word = random.choice(words_db[level])
         user_current_word[message.chat.id] = {"word": new_word.lower(), "level": level}
         shuffled = shuffle_word(new_word)
         
-        # Təbrik və yeni sual tək mesajda
         response_text = (
             f"🎉 **Halaldır!** Düzgün tapdınız: **{correct_answer.upper()}**\n\n"
             f"______________________________\n\n"
             f"{get_random_prompt()}\n\n"
             f"🧩 **HƏRFLƏR:** `{shuffled}`"
         )
-        # Tapan adama REPLY edir və tək mesaj göndərir
         bot.reply_to(message, response_text, parse_mode="Markdown")
 
 bot.infinity_polling()
